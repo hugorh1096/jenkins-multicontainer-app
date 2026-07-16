@@ -38,17 +38,13 @@ pipeline {
         stage('Pruebas de Integracion (Multi-Contenedor)') {
             steps {
                 echo "Levantando stack multi-contenedor completo para pruebas..."
-                // Limpieza preventiva
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
-                
-                // Construimos la imagen y levantamos todo el stack (incluyendo app, postgres y redis)
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d --build"
                 
                 echo "Esperando inicializacion de servicios..."
                 sleep 15
                 
                 echo "Ejecutando pruebas de integracion DENTRO del contenedor de la app..."
-                // Al ejecutarlo dentro del contenedor 'app', DB_HOST=postgres y REDIS_HOST=redis funcionarán nativamente
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app npm run test:integration"
             }
             post {
@@ -68,8 +64,9 @@ pipeline {
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 sleep 10
                 
-                echo "Verificando endpoints con cURL..."
-                sh "curl -f http://localhost:3000/health"
+                echo "Verificando endpoints usando exec dentro del contenedor..."
+                // Ejecutamos curl directamente apuntando a localhost desde la perspectiva interna de la app
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app curl -f http://localhost:3000/health"
             }
             post {
                 always {
