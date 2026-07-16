@@ -145,7 +145,6 @@ pipeline {
                 sleep 10
                 
                 echo "Simulando caída de infraestructura: Pausando contenedor Redis..."
-                // Cambiado a pause para mantener viva la app
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} pause redis"
                 sleep 5
                 
@@ -164,6 +163,15 @@ pipeline {
     }
 
     post {
+        always {
+            echo "Enviando notificaciones del estado del Pipeline..."
+            emailext (
+                subject: "Resultado del Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
+                body: """El pipeline de la rama ${env.BRANCH_NAME} finalizó con estado: ${currentBuild.currentResult}.
+                         Revisa los detalles en: ${env.BUILD_URL}""",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']]
+            )
+        }
         success {
             echo "=================================================================="
             echo "✅ PIPELINE COMPLETADO EXITOSAMENTE ✅"
