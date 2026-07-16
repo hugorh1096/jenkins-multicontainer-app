@@ -64,9 +64,21 @@ pipeline {
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 sleep 10
                 
-                echo "Verificando endpoints usando exec dentro del contenedor..."
-                // Ejecutamos curl directamente apuntando a localhost desde la perspectiva interna de la app
-                sh "docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app curl -f http://localhost:3000/health"
+                echo "Verificando endpoints usando Node.js nativo dentro del contenedor..."
+                // Usamos fetch de Node 18 para verificar el status code sin requerir curl
+                sh """
+                docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e "
+                fetch('http://localhost:3000/health')
+                  .then(res => {
+                    console.log('Status E2E:', res.status);
+                    process.exit(res.ok ? 0 : 1);
+                  })
+                  .catch(err => {
+                    console.error(err);
+                    process.exit(1);
+                  });
+                "
+                """
             }
             post {
                 always {
