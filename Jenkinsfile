@@ -50,7 +50,6 @@ pipeline {
             post {
                 always {
                     echo "Copiando reportes desde el contenedor al Workspace de Jenkins..."
-                    // Esto extrae la carpeta generada dentro del contenedor hacia el host local
                     sh "docker cp \$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q app):/app/coverage ./coverage || true"
                     
                     echo "Generando reportes con Plugins de Jenkins..."
@@ -97,6 +96,35 @@ pipeline {
             post {
                 always {
                     echo "Limpiando stack E2E..."
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
+                }
+            }
+        }
+
+        stage('Pruebas de Rendimiento') {
+            when {
+                expression { return env.BRANCH_NAME == 'main' }
+            }
+            steps {
+                echo "Levantando infraestructura para Pruebas de Rendimiento..."
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
+                sleep 10
+                
+                echo "Simulando carga (100 peticiones concurrentes al endpoint /health)..."
+                sh """
+                docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e "
+                const promesas = Array.from({ length: 100 }, (_, i) => 
+                  fetch('http://localhost:3000/health')
+                    .then(res => console.log(\`Peticion \\\${i + 1}: Status \\\${res.status}\`))
+                    .catch(err => console.error(\`Peticion \\\${i + 1} Fallida:\`, err.message))
+                );
+                Promise.all(promesas).then(() => process.exit(0));
+                "
+                """
+            }
+            post {
+                always {
+                    echo "Limpiando stack de Pruebas de Rendimiento..."
                     sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
                 }
             }
