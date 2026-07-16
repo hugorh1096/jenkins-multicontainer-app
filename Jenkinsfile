@@ -8,7 +8,6 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-multicontainer-app'
         DOCKER_COMPOSE_FILE = 'docker/docker-compose.test.yml'
-        DOCKER_BIN = '/Applications/Docker.app/Contents/Resources/bin/docker'
     }
 
     stages {
@@ -17,8 +16,8 @@ pipeline {
                 echo "Clonando repositorio..."
                 checkout scm
                 echo "Verificando herramientas del Host..."
-                sh "${DOCKER_BIN} --version"
-                sh "${DOCKER_BIN} compose version"
+                sh "docker --version"
+                sh "docker compose version"
             }
         }
 
@@ -39,8 +38,8 @@ pipeline {
         stage('Pruebas de Integracion (Multi-Contenedor)') {
             steps {
                 echo "Levantando infraestructura auxiliar con Docker Compose..."
-                sh "${DOCKER_BIN} compose -f ${DOCKER_COMPOSE_FILE} down -v"
-                sh "${DOCKER_BIN} compose -f ${DOCKER_COMPOSE_FILE} up -d postgres redis"
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d postgres redis"
                 
                 echo "Esperando inicializacion de servicios..."
                 sleep 15
@@ -53,7 +52,7 @@ pipeline {
             post {
                 always {
                     echo "Limpiando infraestructura y volumenes..."
-                    sh "${DOCKER_BIN} compose -f ${DOCKER_COMPOSE_FILE} down -v"
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
                 }
             }
         }
@@ -64,7 +63,7 @@ pipeline {
             }
             steps {
                 echo "Levantando stack completo para pruebas E2E..."
-                sh "${DOCKER_BIN} compose -f ${DOCKER_COMPOSE_FILE} up -d"
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 sleep 10
                 
                 echo "Verificando endpoints con cURL..."
@@ -73,7 +72,7 @@ pipeline {
             post {
                 always {
                     echo "Limpiando stack E2E..."
-                    sh "${DOCKER_BIN} compose -f ${DOCKER_COMPOSE_FILE} down -v"
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
                 }
             }
         }
@@ -83,17 +82,11 @@ pipeline {
         success {
             echo "=================================================================="
             echo "✅ PIPELINE COMPLETADO EXITOSAMENTE ✅"
-            echo "Simulando Notificacion Email de Exito:"
-            echo "Para: equipo-dev@ejemplo.com"
-            echo "Asunto: Pipeline Exitoso: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             echo "=================================================================="
         }
         failure {
             echo "=================================================================="
             echo "❌ PIPELINE FALLIDO ❌"
-            echo "Simulando Notificacion Email de Error:"
-            echo "Para: equipo-dev@ejemplo.com"
-            echo "Asunto: Pipeline Fallido: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             echo "=================================================================="
         }
     }
