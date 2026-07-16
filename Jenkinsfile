@@ -166,10 +166,10 @@ pipeline {
         always {
             echo "Enviando notificaciones del estado del Pipeline..."
             emailext (
+                to: 'hugorh1096@gmail.com',
                 subject: "Resultado del Build #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
                 body: """El pipeline de la rama ${env.BRANCH_NAME} finalizó con estado: ${currentBuild.currentResult}.
-                         Revisa los detalles en: ${env.BUILD_URL}""",
-                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']]
+                         Revisa los detalles en: ${env.BUILD_URL}"""
             )
         }
         success {
