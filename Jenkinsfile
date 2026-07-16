@@ -49,6 +49,21 @@ pipeline {
             }
             post {
                 always {
+                    echo "Copiando reportes desde el contenedor al Workspace de Jenkins..."
+                    // Esto extrae la carpeta generada dentro del contenedor hacia el host local
+                    sh "docker cp \$(docker compose -f ${DOCKER_COMPOSE_FILE} ps -q app):/app/coverage ./coverage || true"
+                    
+                    echo "Generando reportes con Plugins de Jenkins..."
+                    junit allowEmptyResults: true, testResults: '**/junit.xml'
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Integration Test Coverage'
+                    ])
+                    
                     echo "Limpiando infraestructura y volumenes..."
                     sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
                 }
@@ -65,7 +80,6 @@ pipeline {
                 sleep 10
                 
                 echo "Verificando endpoints usando Node.js nativo dentro del contenedor..."
-                // Usamos fetch de Node 18 para verificar el status code sin requerir curl
                 sh """
                 docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e "
                 fetch('http://localhost:3000/health')
