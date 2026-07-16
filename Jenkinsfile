@@ -79,19 +79,7 @@ pipeline {
                 sleep 10
                 
                 echo "Verificando endpoints usando Node.js nativo dentro del contenedor..."
-                sh """
-                docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e "
-                fetch('http://localhost:3000/health')
-                  .then(res => {
-                    console.log('Status E2E:', res.status);
-                    process.exit(res.ok ? 0 : 1);
-                  })
-                  .catch(err => {
-                    console.error(err);
-                    process.exit(1);
-                  });
-                "
-                """
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e \"fetch('http://localhost:3000/health').then(res => { console.log('Status E2E:', res.status); process.exit(res.ok ? 0 : 1); }).catch(err => { console.error(err); process.exit(1); });\""
             }
             post {
                 always {
@@ -111,16 +99,8 @@ pipeline {
                 sleep 10
                 
                 echo "Simulando carga (100 peticiones concurrentes al endpoint /health)..."
-                sh """
-                docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app node -e "
-                const promesas = Array.from({ length: 100 }, (_, i) => 
-                  fetch('http://localhost:3000/health')
-                    .then(res => console.log(\`Peticion \\\${i + 1}: Status \\\${res.status}\`))
-                    .catch(err => console.error(\`Peticion \\\${i + 1} Fallida:\`, err.message))
-                );
-                Promise.all(promesas).then(() => process.exit(0));
-                "
-                """
+                // Pasamos el script usando comillas simples limpias para evitar conflictos con Groovy
+                sh 'docker compose -f ' + env.DOCKER_COMPOSE_FILE + ' exec -T app node -e "const promesas = Array.from({ length: 100 }, (_, i) => fetch(\'http://localhost:3000/health\').then(res => console.log(\'Peticion \' + (i + 1) + \': Status \' + res.status)).catch(err => console.error(\'Peticion \' + (i + 1) + \' Fallida:\', err.message))); Promise.all(promesas).then(() => process.exit(0));"'
             }
             post {
                 always {
