@@ -144,8 +144,9 @@ pipeline {
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 sleep 10
                 
-                echo "Simulando caída de infraestructura: Deteniendo contenedor Redis..."
-                sh "docker compose -f ${DOCKER_COMPOSE_FILE} stop redis"
+                echo "Simulando caída de infraestructura: Pausando contenedor Redis..."
+                // Cambiado a pause para mantener viva la app
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} pause redis"
                 sleep 5
                 
                 echo "Verificando que la app responda /health con tolerancia a fallos..."
@@ -153,6 +154,8 @@ pipeline {
             }
             post {
                 always {
+                    echo "Despausando servicios para evitar bloqueos en la limpieza..."
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} unpause redis || true"
                     echo "Limpiando infraestructura de Resiliencia..."
                     sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
                 }
