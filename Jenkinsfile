@@ -37,17 +37,19 @@ pipeline {
 
         stage('Pruebas de Integracion (Multi-Contenedor)') {
             steps {
-                echo "Levantando infraestructura auxiliar con Docker Compose..."
+                echo "Levantando stack multi-contenedor completo para pruebas..."
+                // Limpieza preventiva
                 sh "docker compose -f ${DOCKER_COMPOSE_FILE} down -v"
-                sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d postgres redis"
+                
+                // Construimos la imagen y levantamos todo el stack (incluyendo app, postgres y redis)
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d --build"
                 
                 echo "Esperando inicializacion de servicios..."
                 sleep 15
                 
-                echo "Ejecutando pruebas de integracion apuntando a los contenedores..."
-                withEnv(['DB_HOST=localhost', 'REDIS_HOST=localhost', 'NODE_ENV=test']) {
-                    sh "npm run test:integration"
-                }
+                echo "Ejecutando pruebas de integracion DENTRO del contenedor de la app..."
+                // Al ejecutarlo dentro del contenedor 'app', DB_HOST=postgres y REDIS_HOST=redis funcionarán nativamente
+                sh "docker compose -f ${DOCKER_COMPOSE_FILE} exec -T app npm run test:integration"
             }
             post {
                 always {
